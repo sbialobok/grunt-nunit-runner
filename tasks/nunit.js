@@ -4,6 +4,53 @@ var fs = require('fs'),
     msbuild = require('./msbuild.js'),
     sax = require('sax');
 
+var versionExec = {
+    "2.x": {
+       'x86': 'nunit-console-x86.exe',
+       'x64': 'nunit-console.exe'
+   },
+   "3.x": {
+       'x86': 'nunit3-console.exe',
+       'x64': 'nunit3-console.exe'
+    }
+}
+var versionCommand = {
+   "2.x": function(cmd, val) {
+       return this[cmd].apply(this,val);
+   },
+   "3.x": function(cmd, val) {
+       if(this[cmd] !== undefined)
+        return this[cmd].apply(this, val);
+       return version['2.x'](cmd, val).replace('/', '--');
+   }
+};
+versionCommand['2.x'].run = function (val) { return '/run:"' + val.join(',') + '"'; }
+versionCommand['2.x'].runlist = function(val) { return '/runlist:"' + val + '"'};
+versionCommand['2.x'].config = function(val) { return '/config:"' + val + '"'};
+versionCommand['2.x'].result = function(val) { return '/result:"' + val + '"'};
+versionCommand['2.x'].noresult = function(val) { return '/noresult'};
+versionCommand['2.x'].output = function(val) { return '/output:"' + val + '"'};
+versionCommand['2.x'].err = function(val) { return '/err:"' + val + '"'};
+versionCommand['2.x'].work = function(val) { return '/work:"' + val + '"'};
+versionCommand['2.x'].labels = function(val) { return '/labels'};
+versionCommand['2.x'].trace = function(val) { return '/trace:' + val};
+versionCommand['2.x'].include = function(val) { return val.length > 0 ? '/include:"' + val.join(',') + '"' : ''};
+versionCommand['2.x'].exclude = function(val) { return val.length > 0 ? '/exclude:"' + val.join(',') + '"' : ''};
+versionCommand['2.x'].framework = function(val) { return '/framework:"' + val + '"'};
+versionCommand['2.x'].process = function(val) { return '/process:' + val};
+versionCommand['2.x'].domain = function(val) { return '/domain:' + val};
+versionCommand['2.x'].apartment = function(val) { return '/apartment:' + val};
+versionCommand['2.x'].noshadow = function(val) { return '/noshadow'};
+versionCommand['2.x'].nothread = function(val) { return '/nothread'};
+versionCommand['2.x'].basepath = function(val) { return '/basepath:"' + val + '"'};
+versionCommand['2.x'].privatebinpath = function(val) { return val.length > 0 ? '/privatebinpath:"' + val.join(';') + '"' : ''};
+versionCommand['2.x'].timeout = function(val) { return '/timeout:' + val};
+versionCommand['2.x'].wait = function(val) { return '/wait'};
+versionCommand['2.x'].nologo = function(val) { return '/nologo'};
+versionCommand['2.x'].nodots = function(val) { return '/nodots'};
+versionCommand['2.x'].stoponerror = function(val) { return '/stoponerror'};
+versionCommand['2.x'].cleanup = function(val) { return '/cleanup'};
+
 exports.findTestAssemblies = function(files, options) {
     var assemblies = [];
     var projects = [];
@@ -36,40 +83,21 @@ exports.findTestAssemblies = function(files, options) {
 };
 
 exports.buildCommand = function(assemblies, options) {
-
-    var nunit = options.platform === 'x86' ? 'nunit-console-x86.exe' : 'nunit-console.exe';
+    var platform = options.platform || 'x64';
+    var version = options.version || '3.x';
+    var nunit = versionExec[version][platform];
+    
     if (options.path) nunit = path.join(options.path, nunit);
 
     nunit = nunit.replace(/\\/g, path.sep);
 
     var args = assemblies.map(function(assembly) { return '"' + assembly + '"'; });
 
-    if (options.run && options.run.length > 0) args.push('/run:"' + options.run.join(',') + '"');
-    if (options.runlist) args.push('/runlist:"' + options.runlist + '"');
-    if (options.config) args.push('/config:"' + options.config + '"');
-    if (options.result) args.push('/result:"' + options.result + '"');
-    if (options.noresult) args.push('/noresult');
-    if (options.output) args.push('/output:"' + options.output + '"');
-    if (options.err) args.push('/err:"' + options.err + '"');
-    if (options.work) args.push('/work:"' + options.work + '"');
-    if (options.labels) args.push('/labels');
-    if (options.trace) args.push('/trace:' + options.trace);
-    if (options.include && options.include.length > 0) args.push('/include:"' + options.include.join(',') + '"');
-    if (options.exclude && options.exclude.length > 0) args.push('/exclude:"' + options.exclude.join(',') + '"');
-    if (options.framework) args.push('/framework:"' + options.framework + '"');
-    if (options.process) args.push('/process:' + options.process);
-    if (options.domain) args.push('/domain:' + options.domain);
-    if (options.apartment) args.push('/apartment:' + options.apartment);
-    if (options.noshadow) args.push('/noshadow');
-    if (options.nothread) args.push('/nothread');
-    if (options.basepath) args.push('/basepath:"' + options.basepath + '"');
-    if (options.privatebinpath && options.privatebinpath.length > 0) args.push('/privatebinpath:"' + options.privatebinpath.join(';') + '"');
-    if (options.timeout) args.push('/timeout:' + options.timeout);
-    if (options.wait) args.push('/wait');
-    if (options.nologo) args.push('/nologo');
-    if (options.nodots) args.push('/nodots');
-    if (options.stoponerror) args.push('/stoponerror');
-    if (options.cleanup) args.push('/cleanup');
+    for(var o in options) {
+        if(versionCommand[version][o] !== undefined) {
+            args.push(versionCommand[version](o, options[o]));
+        }
+    }
 
     return {
         path: nunit,
