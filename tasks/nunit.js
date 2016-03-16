@@ -21,7 +21,7 @@ var versionCommand = {
    "3.x": function(cmd, val) {
        if(this[cmd] !== undefined)
         return this[cmd].apply(this, val);
-       return version['2.x'](cmd, val).replace('/', '--');
+       return version['2.x'](cmd, val).replace('/', '--').replace(':','=');
    }
 };
 versionCommand['2.x'].run = function (val) { return '/run:"' + val.join(',') + '"'; }
@@ -92,7 +92,9 @@ exports.buildCommand = function(assemblies, options) {
     nunit = nunit.replace(/\\/g, path.sep);
 
     var args = assemblies.map(function(assembly) { return '"' + assembly + '"'; });
-
+    if(version === '3.x') {
+        args.push('--result=TestResults.xml;format=nunit2');
+    }
     for(var o in options) {
         if(versionCommand[version][o] !== undefined) {
             args.push(versionCommand[version](o, options[o]));
