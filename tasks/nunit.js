@@ -93,7 +93,7 @@ exports.buildCommand = function(assemblies, options) {
 
     var args = assemblies.map(function(assembly) { return '"' + assembly + '"'; });
     if(version === '3.x') {
-        args.push('--result=TestResults.xml;format=nunit2');
+        args.push('--result=TestResult.xml;format=nunit2');
     }
     for(var o in options) {
         if(versionCommand[version][o] !== undefined) {
